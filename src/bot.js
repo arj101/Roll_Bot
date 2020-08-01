@@ -3,19 +3,19 @@ const firebase = require('firebase');
 const express = require('express');
 const { createCanvas, loadImage, registerFont } = require('canvas');
 const path = require('path');
-const createRankCard = require(path.join(__dirname,'./createRankCard.js'));
+// const createRankCard = require(path.join(__dirname,'./createRankCard.js'));
 require('dotenv').config({ path: path.join(__dirname,'/../.env') });
 
 const app = express();
 
 const port = 8080;
 
-app.get('/', (req, res) => {
+app.get("/", (req, res) => {
   console.log(`I GOT PINGED: (REQUEST HEADER) = ${req.get('user-agent')}`);
   res.send('Welcome');
 });
 
-app.listen(port, () => {
+app.listen( 8080, () => {
   console.log(`Success! Your application is running on port ${port}.`);
 });
 
@@ -669,8 +669,8 @@ function formatNumber(num) {
 
     let numDivided = (num / 1000).toFixed(2);
 
-    if(numDivided >= 10){
-      numDivided = numDivided.toFixed(1);
+    if(num >= 100000){
+      numDivided = (num/1000).toFixed(1);
     }
 
     let numFormatted = numDivided + 'K';
@@ -681,9 +681,7 @@ function formatNumber(num) {
   if (num > 999999) {
     let numDivided = (num / 1000000).toFixed(2);
 
-    if(numDivided >= 10){
-      numDivided = numDivided.toFixed(1);
-    }
+    
 
     let numFormatted = toString(numDivided) + 'M';
     return numFormatted;
