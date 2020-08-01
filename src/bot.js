@@ -8,14 +8,14 @@ require('dotenv').config({ path: path.join(__dirname,'/../.env') });
 
 const app = express();
 
-const port = 8080;
+const port = 3000;
 
 app.get("/", (req, res) => {
   console.log(`I GOT PINGED: (REQUEST HEADER) = ${req.get('user-agent')}`);
   res.send('Welcome');
 });
 
-app.listen( 8080, () => {
+app.listen(port, () => {
   console.log(`Success! Your application is running on port ${port}.`);
 });
 
