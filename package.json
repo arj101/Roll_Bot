@@ -1,0 +1,29 @@
+{
+  "name": "Roll_Bot",
+  "version": "0.0.1",
+  "description": "A discord bot for giving members rolls based on their ranks which is based on how many messages they send :P",
+  "main": "./src/bot.js",
+  "scripts": {
+    "start": "node ./src/bot.js"
+  },
+  "keywords": [
+    "discord-bot",
+    "discord-js",
+    "bot"
+  ],
+  "author": "Arduino Explorer",
+  "license": "ISC",
+  "dependencies": {
+    "canvas": "^2.6.1",
+    "discord.js": "^12.2.0",
+    "dotenv": "^8.2.0",
+    "express": "^4.17.1",
+    "firebase": "^7.16.1"
+  },
+  "devDependencies": {
+    "eslint": "^7.6.0",
+    "eslint-config-airbnb-base": "^14.2.0",
+    "eslint-config-google": "^0.14.0",
+    "eslint-plugin-import": "^2.22.0"
+  }
+}
