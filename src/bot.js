@@ -415,6 +415,7 @@ async function handleMessage(msg) {
       msg.channel.send(help_embed);
     } else {
       if (msg.content.length <= 1) return;
+      if (msg.content.toLowerCase() === "lol") return;
 
       let prev_point = points[guildId][authorId].points;
       let randomNum = undefined;
