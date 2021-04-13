@@ -12,7 +12,10 @@ const port = 3000;
 
 app.get("/", (req, res) => {
   console.log(`I GOT PINGED: (REQUEST HEADER) = ${req.get('user-agent')}`);
-  res.send('Welcome');
+  res.send(`
+The bot is online!!!<br />
+Thanks for the ping.<br />
+Feel free to ping anytime ;)`);
 });
 
 app.listen(port, () => {
@@ -26,6 +29,15 @@ registerFont(path.join(__dirname, '/../fonts/Ubuntu-Regular.ttf'), {
 registerFont(path.join(__dirname, '/../fonts/TwitterColorEmoji-SVGinOT.ttf'), {
   family: 'Twitter Color Emoji',
 });
+
+registerFont(path.join(__dirname, '/../fonts/NotoSans-SemiCondensedMedium.ttf'), {
+  family: 'Noto Sans',
+});
+
+// registerFont(path.join(__dirname, '/../fonts/GochiHand-Regular.ttf'), {
+//   family: 'Gochi Hand',
+// });
+
 
 const firebaseConfig = {
   apiKey: process.env.FIERBASE_API_KEY_ROLL_BOT,
@@ -125,6 +137,7 @@ class PointMap {
 }
 
 async function handleMessage(msg) {
+  if (msg.channel.type === 'dm' || msg.guild === null) return;
   if (!msg.author.bot) {
     let guildId = msg.guild.id;
     let authorId = msg.author.id;
@@ -160,6 +173,23 @@ async function handleMessage(msg) {
 
      if (!points[guildId][authorId])
         points[guildId][authorId] = {points:0};
+
+    if (msg.channel.id === '801492338332401726') {
+      let hasImage = false;
+      for (const a of msg.attachments) {
+        if (a[1].height !== null) {
+          hasImage = true;
+        }
+      }
+      if (!hasImage) {
+        msg.delete()
+      } else {
+        msg.react('👍');
+        msg.react('👎');
+      }
+
+      return;
+    }
 
 
     if (msg.content.toLowerCase().startsWith(`${prefix}points`)) {
@@ -293,6 +323,7 @@ async function handleMessage(msg) {
 
       database.ref(`${guildId}/settings/roles/${role_word}`).set({
         points: points_word,
+        id: role.id
       });
 
       msg.channel.send(
@@ -331,7 +362,8 @@ async function handleMessage(msg) {
       msg.channel.send(`Succesfully set commands channel to <#${channel.id}>`);
 
 
-    } else if (msg.content.startsWith(`${prefix}setCommandChannel`)) {
+    } 
+     else if (msg.content.startsWith(`${prefix}setCommandChannel`)) {
       if (!msg.member.hasPermission('ADMINISTRATOR')) {
         msg.reply('You need to be an administrator to use this command. :(');
         return;
@@ -368,6 +400,11 @@ async function handleMessage(msg) {
 
       let rolesKeys = Object.keys(points[guildId].settings.roles);
 
+      rolesKeys.sort(function(a, b) {
+        return points[guildId].settings.roles[a].points -
+        points[guildId].settings.roles[b].points
+      });
+      
       for (let roleKey in rolesKeys) {
         roleEmbed.addField(
           `\`${rolesKeys[roleKey]}\``,
@@ -378,35 +415,60 @@ async function handleMessage(msg) {
       }
 
       msg.channel.send(roleEmbed);
+    } else if (msg.content.toLowerCase().startsWith(`${prefix}removerole`)) {
+      if (!msg.member.hasPermission('ADMINISTRATOR')) {
+        msg.reply('You need to be an administrator to use this command. :(');
+        return;
+      }
+      let msg_arr = msg.content.split(' ');
+      msg_arr.shift();
+      let role_name = msg_arr.join(' ');
+
+      if (!role_name) {
+        msg.channel.send("Please provide a valid role name.");
+        return;
+      }
+
+    
+      if (!points[guildId].settings.roles[role_name]) {
+        msg.channel.send(`Role '${role_name}' is not used for ranking.`);
+        return;
+      }
+
+      database.ref(`${guildId}/settings/roles/${role_name}`).remove();
+
+      points[guildId].settings = loadServerSettings(guildId);
+
+      msg.channel.send('Done!');
     }
      else if (msg.content.toLowerCase() == `${prefix}help`) {
       let help_embed = new Discord.MessageEmbed()
         .setColor(embedColor)
-        .setTitle('All of my commands :ok_hand:')
+        .setTitle('Help')
         .addFields(
           { name: '\u200B', value: '\u200B' },
-          { name: '`help`', value: 'Send this message ' },
+          { name: '`help`', value: 'I think its quite obvious...' },
           { name: '\u200B', value: '\u200B' },
           {
             name: '`points <ping server member  here(optional)>`',
             value:
-              'Show how much Daily dose points you have! If you pinged a server member, shows their point',
+              'Shows your/who you mention points.',
           },
           { name: '\u200B', value: '\u200B' },
           {
             name: '`addRole \'<Role name here>\' <Points here>`',
             value:
-              'Set a role to be added to a member when they reach a certain number of points!',
+              'Add a role to the ranking system.',
           },
           { name: '\u200B', value: '\u200B' },
           {
             name: '`setChannel <channel>`',
-            value: 'Sets the channel to send rank up messages.',
+            value: 'Set rank-up message channel..',
           },
           { name: '\u200B', value: '\u200B' },
           {
             name: '`roles`',
-            value: 'Sends a message with info about each role',
+            value: 'If you wanna know more about the roles.',
           },
           { name: '\u200B', value: '\u200B' }
         )
@@ -421,10 +483,10 @@ async function handleMessage(msg) {
       let randomNum = undefined;
       let newPoint = undefined;
       
+ 
       if (!newPointsMap[guildId][authorId]) {
 
-        randomNum =  Math.floor(Math.random() * 10 + 1)
-
+        randomNum =  Math.floor(Math.random() * 10 + 1);
         newPoint = points[guildId][authorId].points + randomNum;
 
       }else{
@@ -466,12 +528,12 @@ async function handleMessage(msg) {
             points[guildId][authorId].points = newPoint;
 
             channel.send(
-              `<@${authorId}> You levelled up! \nYour new tier is.... ${roles_key[key]} :tada:`
+              `<@${authorId}> You levelled up! \nYour new tier is... ${roles_key[key]} :tada:`
             );
 
             Object.keys(points[guildId].settings.roles).forEach((role_name) => {
               let role = msg.guild.roles.cache.find(
-                (role_temp) => role_temp.name == role_name
+                (role_temp) => role_temp.id == points[guildId].settings.roles[role_name].id
               );
 
               if (role) {
@@ -480,7 +542,7 @@ async function handleMessage(msg) {
             });
 
             let role = msg.guild.roles.cache.find(
-              (role) => role.name == roles_key[key]
+              (role) => role.id == points[guildId].settings.roles[roles_key[key]].id
             );
 
             if (!role) {
@@ -606,7 +668,7 @@ async function createRankCard(
   ctx.fill();
 
   let fontHeight = 72;
-  ctx.font = `${fontHeight}px Ubuntu Regular , Twitter Color Emoji`;
+  ctx.font = `${fontHeight}px Ubuntu Regular , Noto Sans Twitter Color Emoji`;
   ctx.fillText(formatMembername(memberName), 502, 86 + fontHeight);
 
   let pointsFormatted = formatNumber(pointsMember);
@@ -651,6 +713,29 @@ async function createRankCard(
 
   return canvas.toBuffer();
 }
+
+//maybe later
+// function createWelcomeCard(username) {
+//   const canvas = createCanvas(640, 240);
+//   const ctx = canvas.getContext('2d');
+
+//   ctx.font = '30px Ubuntu';
+//   ctx.beginPath();
+
+//   drawRoudedRectangle(ctx, 20, 20, 600, 200, 10);
+//   ctx.fillStyle = 'rgba(253, 71, 71, 1)';
+//   ctx.fill();
+
+//   username = 'Arduino Explorer#5896'
+
+//   const fontHeight = 42;
+//   ctx.font = `${fontHeight}px Gochi Hand , Noto Sans Twitter Color Emoji`;
+//   ctx.fillStyle = 'rgba(255, 255, 255, 1)';
+//   ctx.fillText(username, 320 - (ctx.measureText(username).width/2), 120);
+
+
+//   return canvas.toBuffer();
+// }
 
 function drawRoudedRectangle(context, x, y, w, h, r) {
   if (w < 2 * r) r = w / 2;
@@ -699,4 +784,22 @@ function formatMembername(name) {
   } else {
     return name;
   }
+}
+
+
+
+function getRoleById(guild, id) {
+ let role = guild.roles.cache.find(
+                (role_temp) => role_temp.id == id
+  );
+
+  return role;
+}
+
+function getMemberById(guild, id) {
+  let member = "idk"
+
+  console.log(client.guilds.cache)
+
+  return member;
 }
