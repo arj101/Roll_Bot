@@ -3,6 +3,7 @@ const firebase = require('firebase');
 const express = require('express');
 const { createCanvas, loadImage, registerFont } = require('canvas');
 const path = require('path');
+const { pointsCommand } = require('./commands/points.js');
 // const createRankCard = require(path.join(__dirname,'./createRankCard.js'));
 require('dotenv').config({ path: path.join(__dirname,'/../.env') });
 
@@ -30,13 +31,14 @@ registerFont(path.join(__dirname, '/../fonts/TwitterColorEmoji-SVGinOT.ttf'), {
   family: 'Twitter Color Emoji',
 });
 
-registerFont(path.join(__dirname, '/../fonts/NotoSans-SemiCondensedMedium.ttf'), {
+registerFont(path.join(__dirname, '/../fonts/NotoSans-Regular.ttf'), {
   family: 'Noto Sans',
 });
 
-// registerFont(path.join(__dirname, '/../fonts/GochiHand-Regular.ttf'), {
-//   family: 'Gochi Hand',
-// });
+registerFont(path.join(__dirname, '/../fonts/NotoSans-Bold.ttf'), {
+  family: 'Noto Sans Bold',
+});
+
 
 
 const firebaseConfig = {
@@ -96,6 +98,58 @@ client.on('message', async (msg) => {
 
   }
 });
+
+// client.ws.on('INTERACTION_CREATE', async interaction => {
+//   const authorId = interaction.member.user.id;
+//   const guildId = interaction.guild_id;
+
+//   if (!points[guildId]) {
+//       points[guildId] = {};
+//       let _ = await loadServerSettings(guildId);
+//       console.log('result:   ' + _);
+//     }
+
+//   if (!points[guildId][authorId]) {
+//     console.log('loading data from database...');
+//     let point_snap = await database
+//       .ref(guildId + '/' + authorId)
+//       .once('value');
+//     let point_database = point_snap.val();
+//     if (point_database) {
+//       if (!isNaN(point_database.points)) {
+//         points[guildId][authorId] = {
+//           points: parseInt(point_database.points),
+//         };
+//       }
+//     }
+
+//     console.log('Done');
+//   }
+
+//   if (!newPointsMap[guildId]) {
+//     newPointsMap[guildId] = {};
+//   }
+
+//   if (!points[guildId].settings) points[guildId].settings = {};
+
+//   if (!points[guildId][authorId]) {
+//         points[guildId][authorId] = {points:0};
+//   }
+
+//   if (interaction.data.name === 'points') {
+//       await client.api.interactions(interaction.id, interaction.token).callback.post({data: {
+//     type: 5,
+//   }});
+
+//   const message = await client.api.webhooks(client.user.id, interaction.token).messages('@original').get();
+
+
+//   const wb = new Discord.WebhookClient(client.user.id, interaction.token);
+//     await wb.editMessage(message, "Why does this work wtf");
+
+//     // await pointsCommand(interaction, points, client);
+//   }
+// })
 
 
 
@@ -192,7 +246,7 @@ async function handleMessage(msg) {
     }
 
 
-    if (msg.content.toLowerCase().startsWith(`${prefix}points`)) {
+    if (msg.content.toLowerCase().startsWith(`${prefix}points`) || msg.content.toLowerCase().startsWith(`${prefix}p `) || msg.content.toLowerCase() === `${prefix}p`) {
 
 
       let words = msg.content.split(' ').filter((word) => word.length >= 1);
@@ -215,7 +269,9 @@ async function handleMessage(msg) {
 
 
 
-      let mention = msg.mentions.members.first()
+      let mention = msg.mentions.members.first();
+
+    
 
       if (mention != undefined) {
        
@@ -234,7 +290,6 @@ async function handleMessage(msg) {
               }
             }
 
-            console.log('Done');
           }
           
         
@@ -246,6 +301,7 @@ async function handleMessage(msg) {
             return;
           }
 
+
           msg.channel.send({
             files: [
               await createRankCard(
@@ -256,13 +312,75 @@ async function handleMessage(msg) {
                 mention.user.tag.slice(
                   mention.user.tag.length - 5,
                   mention.user.tag.length
-                )
+                ),
+                mention.user.presence.status
               ),
             ],
           });
 
           return;
+      }
         
+      let ids = msg.content.split(' ').filter((word) => word.length === 18);
+      let members = [];
+
+      for (const id of ids) {
+        let member = await msg.guild.members.fetch(id).catch(() => {});
+        if (member != undefined) {
+          members.push(member)
+        }
+      }
+
+      if (members.length > 0) {
+
+        if (members.length > 3) {
+          members = members.slice(0, 3);
+        }
+
+        for (const member of members) {
+          
+
+           if (!points[guildId][member.user.id]) {
+            console.log('loading data from database...');
+            let point_snap = await database
+              .ref(guildId + '/' + member.user.id)
+              .once('value');
+            let point_database = point_snap.val();
+            if (point_database) {
+              if (!isNaN(point_database.points)) {
+                points[guildId][member.user.id] = {
+                  points: parseInt(point_database.points),
+                };
+              }
+            }
+
+          }
+          
+        
+          
+          if (!points[guildId][member.user.id]) {
+            msg.channel.send(
+              `\`${member.displayName}\` doesn't have any Daily dose points :(`
+            );
+          } else {
+              msg.channel.send({
+              files: [
+                await createRankCard(
+                  guildId,
+                  member.user.id,
+                  member.displayName,
+                  member.user.displayAvatarURL({ format: 'png' }),
+                  member.user.tag.slice(
+                    member.user.tag.length - 5,
+                    member.user.tag.length
+                  ),
+                member.user.presence.status
+                ),
+              ],
+            });
+          }
+        }
+        return;
       }
     
 
@@ -277,7 +395,8 @@ async function handleMessage(msg) {
               msg.member.user.tag.slice(
                 msg.member.user.tag.length - 5,
                 msg.member.user.tag.length
-              )
+              ),
+              msg.member.user.presence.status
             ),
           ],
         });
@@ -581,7 +700,8 @@ async function createRankCard(
   authorId,
   memberName,
   avatarURL,
-  tagName
+  tagName,
+  status
 ) {
   const canvas = createCanvas(1516, 492);
   const ctx = canvas.getContext('2d');
@@ -628,16 +748,12 @@ async function createRankCard(
     }
   }
 
-  ctx.font = '30px Ubuntu';
+  ctx.font = '30px Noto Sans';
 
   ctx.beginPath();
 
   ctx.rect(0, 0, canvas.width, canvas.height);
-  ctx.fillStyle = 'rgba(25,25,25,1)';
-  ctx.fill();
-
-  drawRoudedRectangle(ctx, 60, 54, 1396, 384, 30);
-  ctx.fillStyle = 'rgba(0,0,0,0.6)';
+  ctx.fillStyle = 'rgba(40, 46, 51, 1)';
   ctx.fill();
 
   let rankBelowPoint;
@@ -654,62 +770,112 @@ async function createRankCard(
 
   if (rankAbovePoint == Infinity) pointsRatio = 1;
 
-  let progressBarWidth = 888 * pointsRatio;
+  let progressBarWidth = 914 * pointsRatio;
 
   if (progressBarWidth < 76) progressBarWidth = 76;
  
 
-  drawRoudedRectangle(ctx, 502, 296, 888, 76, 38);
-  ctx.fillStyle = 'rgba(38, 38, 38, 1)';
+  drawRoudedRectangle(ctx, 502, 316, 914, 76, 38);
+  ctx.fillStyle = 'rgba(54, 60, 66, 1)';
   ctx.fill();
 
-  drawRoudedRectangle(ctx, 502, 296, progressBarWidth, 76, 38);
-  ctx.fillStyle = 'rgba(32, 188, 255, 1)';
+  drawRoudedRectangle(ctx, 502, 316, progressBarWidth, 76, 38);
+  ctx.fillStyle = 'rgba(255, 16, 73, 1)';
   ctx.fill();
 
-  let fontHeight = 72;
-  ctx.font = `${fontHeight}px Ubuntu Regular , Noto Sans Twitter Color Emoji`;
-  ctx.fillText(formatMembername(memberName), 502, 86 + fontHeight);
 
   let pointsFormatted = formatNumber(pointsMember);
 
-  ctx.fillStyle = 'rgba(255,255,255,1)';
+  let fontHeight = 96;
+
+  ctx.font = `${fontHeight}px Noto Sans`;
+  ctx.fillStyle = 'rgba(255, 16, 73, 1)';
   ctx.fillText(
     pointsFormatted,
-    1390 - ctx.measureText(pointsFormatted).width,
-    86 + fontHeight
+    1416 - ctx.measureText(pointsFormatted).width,
+    57 + fontHeight
   );
 
-  fontHeight = 34;
-  ctx.font = `${fontHeight}px Ubuntu Regular`;
-  ctx.fillStyle = 'rgba(100,100,100,0.7)';
+  let pointsWidth = ctx.measureText(pointsFormatted).width;
+
+  let formatedMemberName = memberName;
+
+
+  fontHeight = 64;
+  ctx.font = `${fontHeight}px Noto Sans, Twitter Color Emoji`;
+  ctx.fillStyle = 'rgba(255, 255, 255, 1)';
+
+  if (ctx.measureText(formatedMemberName).width + 502 > 1416 - pointsWidth - 100) {
+    while (ctx.measureText(formatedMemberName).width + 502 > 1416 - pointsWidth - 100) {
+      formatedMemberName = formatedMemberName.slice(0, formatedMemberName.length - 1);
+    }
+
+    formatedMemberName = formatedMemberName.trim() + '...';
+  }
+
+  ctx.fillText(formatedMemberName, 502, 79 + fontHeight);
+
+  fontHeight = 36;
+  ctx.font = `${fontHeight}px Noto Sans`;
+  ctx.fillStyle = 'rgba(175,175, 175, 1)';
   ctx.fillText(tagName, 502, 172 + fontHeight);
 
   fontHeight = 36;
   ctx.fillStyle = 'rgba(255,255,255,1)';
-  ctx.font = `${fontHeight}px Ubuntu Regular`;
+  ctx.font = `${fontHeight}px Noto Sans`;
 
-  if (currentRankPoint != -1) {
-    ctx.fillText(currentRank, 502, 244 + fontHeight);
-  }
-
+ 
   if (nextRankPoint != Infinity) {
     let role2 = nextRank;
-    ctx.fillText(role2, 1390 - ctx.measureText(role2).width, 244 + fontHeight);
-  }
+    ctx.fillText(role2, 1416 - ctx.measureText(role2).width, 258 + fontHeight);
 
-  fontHeight = 24;
-  ctx.font = `${fontHeight}px Ubuntu Regular`;
-  ctx.fillStyle = 'rgba(0, 148, 255, 1)';
-  ctx.fillText('Daily Dose Points', 1204, 168 + fontHeight);
+    if (currentRankPoint != -1 ) {
+      ctx.fillText(currentRank, 502, 258 + fontHeight);
+    } 
+  } else if (currentRankPoint != -1) {
+    fontHeight = 64;
+    ctx.font = `${fontHeight}px Noto Sans Bold`;
+    ctx.fillText(currentRank, 958.5 - (ctx.measureText(currentRank).width /2 ), 310 + fontHeight);
+  } 
+
+
+  fontHeight = 36;
+  ctx.font = `${fontHeight}px Noto Sans`;
+  ctx.fillStyle = 'rgba(175, 175, 175, 1)';
+  ctx.fillText('Daily Dose Points', 1129, 172 + fontHeight);
 
   let image = await loadImage(avatarURL);
 
-  drawRoudedRectangle(ctx, 112, 104, 284, 284, 256);
-
+  drawRoudedRectangle(ctx, 71, 71, 350, 350, 175);
+  drawRoudedStrokeRectangle(ctx, 71, 71, 350, 350, 175, "rgba(255, 255, 255, 1)");
+  
+  ctx.save();
   ctx.clip();
+  ctx.drawImage(image, 71, 71, 350, 350);
+  ctx.restore();
 
-  ctx.drawImage(image, 112, 104, 284, 284);
+  drawRoudedStrokeRectangle(ctx, 366, 322, 50, 50, 25, "rgba(255, 255, 255, 1)");
+
+  let color = "rgba(58, 224, 0, 1)";
+
+  switch (status) {
+    case 'online':
+      color = "rgba(58, 224, 0, 1)";
+      break;
+    case 'idle':
+      color = "rgba(255, 92, 0, 1)";
+      break;
+    case 'dnd':
+      color = "rgba(255, 16, 73, 1)";
+      break;
+    case 'offline':
+      color = "rgba(175, 175, 175, 1)";
+      break;
+  }
+
+  drawRoudedRectangle(ctx, 366, 322, 50, 50, 25);
+  ctx.fillStyle = color;
+  ctx.fill();
 
   return canvas.toBuffer();
 }
@@ -750,6 +916,22 @@ function drawRoudedRectangle(context, x, y, w, h, r) {
   return context;
 }
 
+function drawRoudedStrokeRectangle(context, x, y, w, h, r, rgba) {
+  if (w < 2 * r) r = w / 2;
+  if (h < 2 * r) r = h / 2;
+  context.beginPath();
+  context.lineWidth = "5";
+  context.strokeStyle = rgba;
+  context.moveTo(x + r, y);
+  context.arcTo(x + w, y, x + w, y + h, r);
+  context.arcTo(x + w, y + h, x, y + h, r);
+  context.arcTo(x, y + h, x, y, r);
+  context.arcTo(x, y, x + w, y, r);
+  context.stroke();
+  context.closePath();
+  return context;
+}
+
 function formatNumber(num) {
   if (num > 999 && num < 1000000) {
 
@@ -777,8 +959,8 @@ function formatNumber(num) {
 }
 
 function formatMembername(name) {
-  if (name.length > 17) {
-    let nameFormatted = name.slice(0, 15);
+  if (name.length > 14) {
+    let nameFormatted = name.slice(0, 13);
     nameFormatted += '...';
     return nameFormatted;
   } else {

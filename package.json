@@ -14,11 +14,13 @@
   "author": "Arduino Explorer",
   "license": "ISC",
   "dependencies": {
-    "canvas": "^2.6.1",
-    "discord.js": "^12.2.0",
-    "dotenv": "^8.2.0",
+    "canvas": "^2.8.0",
+    "discord.js": "^12.5.3",
+    "dotenv": "^8.6.0",
     "express": "^4.17.1",
-    "firebase": "^7.16.1"
+    "firebase": "^7.24.0",
+    "node": "^14.16.1",
+    "node-canvas": "^2.7.0"
   },
   "devDependencies": {
     "eslint": "^7.6.0",
